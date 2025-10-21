@@ -39,9 +39,13 @@ clr_visor_loop:		mov		#' ',(r1)
 
 			; sets waits to one
 			; (initial state)
-set_wait:		not		wait_um
-			not		wait_dois
-			not		wait_tres
+set_wait:		mov		#hffff,wait_um
+			mov		#hffff,wait_dois
+			mov		#hffff,wait_tres
+
+			mov		#50,frozen_c_um
+			mov		#50,frozen_c_dois
+			mov		#50,frozen_c_tres
 
 			; principal
 			; updt visor
@@ -55,6 +59,9 @@ main:			mov		#h83,inte
 visor_loop:		; escreve visor
 			; escreve cronos somente se show ativado
 			; primeiro crono
+
+			and		#h7f,inte
+	
 visor_um:		cmp		frozen_um,#hffff
 			beq		visor_dois
 
@@ -101,7 +108,7 @@ visor_dois:		cmp		frozen_dois,#hffff
 			mov		#']',visor+18
 
 			; terceiro crono
-visor_tres:		cmp		show_tres,#hffff
+visor_tres:		cmp		frozen_tres,#hffff
 			beq		visor_rel
 
 			mov		segundos_tres,r0
@@ -134,6 +141,8 @@ visor_rel:		mov		minutos_rel,r0
 			mov		#visor+34,r1
 			jsr		r7,esc_dois_dig
 			
+			or		#h80,inte
+
 			jmp		visor_loop
 
 			; num de tres
@@ -187,7 +196,7 @@ laps_um:		dw		0
 wait_um:		dw		0
 show_um:		dw		0
 frozen_um:		dw		0
-frozen_c_um:		dw		50
+frozen_c_um:		dw		0
 
 crono_dois:
 segundos_dois:		dw		0
@@ -196,7 +205,7 @@ laps_dois:		dw		0
 wait_dois:		dw		0
 show_dois:		dw		0
 frozen_dois:		dw		0
-frozen_c_dois:		dw		50
+frozen_c_dois:		dw		0
 
 crono_tres:
 segundos_tres:		dw		0
@@ -205,7 +214,7 @@ laps_tres:		dw		0
 wait_tres:		dw		0
 show_tres:		dw		0
 frozen_tres:		dw		0
-frozen_c_tres:		dw		50
+frozen_c_tres:		dw		0
 
 rel:
 minutos_rel:		dw		0
@@ -224,7 +233,6 @@ isr:			mov		r0,-(r6)
 			
 			mov		ints,r0
 			jsr		r7,int_sort
-			clr		tecst
 			and		#hfffc,ints
 
 isr_return:		mov		(r6)+,r5
@@ -233,12 +241,16 @@ isr_return:		mov		(r6)+,r5
 			mov		(r6)+,r2
 			mov		(r6)+,r1
 			mov		(r6)+,r0
-			rti
 
-int_sort:		and		#2,r0
+			rti
+			
+			; wrong masks (?)
+int_sort:		mov		ints,r0	
+			and		#2,r0
 			bne		isr_tec
 			jmp		isr_timer
 
+			; clr 		tecdt (?)
 			; branch tecla
 			; 3 arrumado
 isr_tec:		mov		tecdt,tecla
@@ -249,6 +261,7 @@ isr_tec:		mov		tecdt,tecla
 			cmp		#'3',tecla
 			bne		stop_isr_tec
 			jmp		adj_bools_tres
+
 stop_isr_tec:		rts		r7
 
 adj_bools_um:		cmp		wait_um,#hffff
@@ -295,7 +308,8 @@ actv_show_dois:		not		wait_dois
 			inc		laps_dois
 			jmp		isr_tec_fim
 
-			; deve iniciar contador de 5s
+			; deve iniciar
+			; contador de 5s
 actv_frzn_dois:		not		show_dois
 			not		frozen_dois
 			mov		#0,segundos_dois
@@ -325,9 +339,10 @@ adj_bools_tres:		cmp		wait_tres,#hffff
 actv_show_tres:		not		wait_tres		
 			not		show_tres
 			inc		laps_tres
-			br		isr_tec_fim
+			jmp		isr_tec_fim
 
-			; deve iniciar contador de 5s
+			; deve iniciar
+			; contador de 5s
 actv_frzn_tres:		not		show_tres
 			not		frozen_tres
 			mov		#0,segundos_tres
@@ -409,9 +424,6 @@ updt_tres:		inc		decimos_tres
 			blt		check_frzn_um
 			clr		segundos_tres
 
-			; cmp bools se cronos
-			; estao em show. se
-			; sim, atualiza var
 check_frzn_um:		cmp		frozen_um,#hffff
 			beq		dec_frzn_c_um
 			jmp		check_frzn_dois
