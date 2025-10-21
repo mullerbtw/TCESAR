@@ -57,7 +57,8 @@ main:			mov		#h83,inte
 			; ou nao
 
 visor_loop:		; escreve visor
-			; escreve cronos somente se frzn desativado
+			; escreve cronos somente
+			; se frzn desativado
 			; primeiro crono
 
 			; desliga ints p/
@@ -192,6 +193,14 @@ esc_dois_visor:		add		#'0',r2
 			inc		r1
 			mov		r0,(r1)
 			rts		r7
+
+			; coisas que seriam
+			; fora do tratador
+
+
+
+
+
 
 crono_um:
 segundos_um:		dw		0
