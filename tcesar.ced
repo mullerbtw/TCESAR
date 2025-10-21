@@ -57,9 +57,11 @@ main:			mov		#h83,inte
 			; ou nao
 
 visor_loop:		; escreve visor
-			; escreve cronos somente se show ativado
+			; escreve cronos somente se frzn desativado
 			; primeiro crono
 
+			; desliga ints p/
+			; escrever visor
 			and		#h7f,inte
 	
 visor_um:		cmp		frozen_um,#hffff
@@ -130,7 +132,7 @@ visor_tres:		cmp		frozen_tres,#hffff
 			mov		r0,visor+27
 			mov		#']',visor+28
 
-			;rel
+			;relogio
 visor_rel:		mov		minutos_rel,r0
 			mov		#visor+31,r1
 			jsr		r7,esc_dois_dig
@@ -141,6 +143,8 @@ visor_rel:		mov		minutos_rel,r0
 			mov		#visor+34,r1
 			jsr		r7,esc_dois_dig
 			
+			; liga ints p/
+			; escrever visor
 			or		#h80,inte
 
 			jmp		visor_loop
@@ -244,15 +248,14 @@ isr_return:		mov		(r6)+,r5
 
 			rti
 			
-			; wrong masks (?)
+			; sort teclado
+			; ou timer
 int_sort:		mov		ints,r0	
 			and		#2,r0
 			bne		isr_tec
 			jmp		isr_timer
 
-			; clr 		tecdt (?)
-			; branch tecla
-			; 3 arrumado
+			; int teclado
 isr_tec:		mov		tecdt,tecla
 			cmp		#'1',tecla
 			beq		adj_bools_um
@@ -264,6 +267,8 @@ isr_tec:		mov		tecdt,tecla
 
 stop_isr_tec:		rts		r7
 
+			; arruma bools
+			; do crono um
 adj_bools_um:		cmp		wait_um,#hffff
 			beq		actv_show_um
 			cmp		show_um,#hffff
@@ -275,8 +280,6 @@ actv_show_um:		not		wait_um
 			inc		laps_um
 			jmp		isr_tec_fim
 
-			; deve iniciar
-			; contador de 5s
 actv_frzn_um:		not		show_um
 			not		frozen_um
 			mov		#0,segundos_um
@@ -286,7 +289,7 @@ actv_frzn_um:		not		show_um
 			beq		zerar_laps_um
 			jmp		isr_tec_fim
 
-zerar_laps_um:		mov		#0,laps_um
+zerar_laps_um:		mov		#1,laps_um
 			jmp		isr_tec_fim
 
 actv_wait_um:		not		frozen_um
@@ -297,6 +300,8 @@ actv_wait_um:		not		frozen_um
 			mov		#50,frozen_c_um
 			jmp		isr_tec_fim
 
+			; arruma bools
+			; do crono dois
 adj_bools_dois:		cmp		wait_dois,#hffff
 			beq		actv_show_dois
 			cmp		show_dois,#hffff
@@ -308,8 +313,6 @@ actv_show_dois:		not		wait_dois
 			inc		laps_dois
 			jmp		isr_tec_fim
 
-			; deve iniciar
-			; contador de 5s
 actv_frzn_dois:		not		show_dois
 			not		frozen_dois
 			mov		#0,segundos_dois
@@ -319,7 +322,7 @@ actv_frzn_dois:		not		show_dois
 			beq		zerar_laps_dois
 			jmp		isr_tec_fim
 
-zerar_laps_dois:	mov		#0,laps_dois
+zerar_laps_dois:	mov		#1,laps_dois
 			jmp		isr_tec_fim
 
 actv_wait_dois:		not		frozen_dois
@@ -330,6 +333,8 @@ actv_wait_dois:		not		frozen_dois
 			mov		#50,frozen_c_dois
 			jmp		isr_tec_fim
 
+			; arruma bools
+			; do crono tres
 adj_bools_tres:		cmp		wait_tres,#hffff
 			beq		actv_show_tres
 			cmp		show_tres,#hffff
@@ -341,8 +346,6 @@ actv_show_tres:		not		wait_tres
 			inc		laps_tres
 			jmp		isr_tec_fim
 
-			; deve iniciar
-			; contador de 5s
 actv_frzn_tres:		not		show_tres
 			not		frozen_tres
 			mov		#0,segundos_tres
@@ -352,7 +355,7 @@ actv_frzn_tres:		not		show_tres
 			beq		zerar_laps_tres
 			jmp		isr_tec_fim
 
-zerar_laps_tres:	mov		#0,laps_tres
+zerar_laps_tres:	mov		#1,laps_tres
 			jmp		isr_tec_fim
 
 actv_wait_tres:		not		frozen_tres
@@ -363,11 +366,13 @@ actv_wait_tres:		not		frozen_tres
 			mov		#50,frozen_c_tres
 			jmp		isr_tec_fim
 
+			; fim int teclado
 isr_tec_fim:		clr		tecst
 			rts		r7
 
-			; update cronos
-isr_timer:		inc		decimos_rel
+			; int timer
+isr_timer:		; update rel
+			inc		decimos_rel
 			cmp		decimos_rel,#10
 			blt		check_um
 			clr		decimos_rel
@@ -382,6 +387,8 @@ isr_timer:		inc		decimos_rel
 			blt		check_um
 			clr		minutos_rel
 
+			; update crono
+			; se wait off
 check_um:		cmp		wait_um,#hffff
 			bne		updt_um
 			jmp		check_dois
@@ -396,6 +403,8 @@ updt_um:		inc		decimos_um
 			blt		check_dois
 			clr		segundos_um
 			
+			; update crono
+			; se wait off
 check_dois:		cmp		wait_dois,#hffff
 			bne		updt_dois
 			jmp		check_tres
@@ -414,6 +423,8 @@ check_tres:		cmp		wait_tres,#hffff
 			bne		updt_tres
 			jmp		check_frzn_um
 
+			; update crono
+			; se wait off
 updt_tres:		inc		decimos_tres
 			cmp		decimos_tres,#10
 			blt		check_frzn_um
@@ -424,34 +435,44 @@ updt_tres:		inc		decimos_tres
 			blt		check_frzn_um
 			clr		segundos_tres
 
+			; checa frzn bool
 check_frzn_um:		cmp		frozen_um,#hffff
 			beq		dec_frzn_c_um
 			jmp		check_frzn_dois
 
+			; se frzn bool on
+			; dec contador 5s
 dec_frzn_c_um:		dec		frozen_c_um
 			bne		check_frzn_dois
 			not		frozen_um
 			not		show_um
 			mov		#50,frozen_c_um
-
+			
+			; checa frzn bool
 check_frzn_dois:	cmp		frozen_dois,#hffff
 			beq		dec_frzn_c_dois
 			jmp		check_frzn_tres
 
+			; se frzn bool on
+			; dec contador 5s
 dec_frzn_c_dois:	dec		frozen_c_dois
 			bne		check_frzn_tres
 			not		frozen_dois
 			not		show_dois
 			mov		#50,frozen_c_dois
-
+			
+			; checa frzn bool
 check_frzn_tres:	cmp		frozen_tres,#hffff
 			beq		dec_frzn_c_tres
 			jmp		isr_timer_fim
 
+			; se frzn bool on
+			; dec contador 5s
 dec_frzn_c_tres:	dec		frozen_c_tres
 			bne		isr_timer_fim
 			not		frozen_tres
 			not		show_tres
 			mov		#50,frozen_c_tres
 
+			; fim int timer
 isr_timer_fim:		rts		r7
