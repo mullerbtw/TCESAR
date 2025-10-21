@@ -1,0 +1,445 @@
+			; beware of decimos dos cronos no visor
+			; se problema, fazer igual ao lab
+
+			org		hff80
+
+stack:			daw		[31]
+ivet:			dw		0
+
+			dab		[23]
+timdt:			db		0
+ints:			db		0
+inte:			db		0
+tecst:			db		0
+tecdt:			db		0
+visor:			dab		[36]
+
+			org		0
+
+			mov		#stack,r6
+			clr		ints			; limpa interrupcoes pendentes
+			clr		tecst			; limpa sinais do teclado
+			mov		#isr,ivet		; move posicao de rotina para vetor
+			mov		#100,timdt		; periodicidade do teclado (10ms)
+
+			; limpa cronos/rel
+			; antes de comecar
+clr_cronos:		mov		#25,r0
+			mov		#crono_um,r1
+
+clr_mem_loop:		clr		(r1)+
+			sob		r0,clr_mem_loop
+
+clr_visor:		mov		#36,r0
+			mov		#visor,r1
+
+clr_visor_loop:		mov		#' ',(r1)
+			inc		r1
+			sob		r0,clr_visor_loop
+
+			; sets waits to one
+			; (initial state)
+set_wait:		not		wait_um
+			not		wait_dois
+			not		wait_tres
+
+			; principal
+			; updt visor
+			; cronos op control
+main:			mov		#h83,inte
+
+			; checar bools
+			; para escrita
+			; ou nao
+
+visor_loop:		; escreve visor
+			; escreve cronos somente se show ativado
+			; primeiro crono
+visor_um:		cmp		frozen_um,#hffff
+			beq		visor_dois
+
+			mov		segundos_um,r0
+			mov		#visor,r1
+			jsr		r7,esc_tres_dig
+
+			mov		#',',visor+3
+
+			mov		decimos_um,r0
+			mov		#visor+4,r1
+			add		#'0',r0
+			mov		r0,(r1)
+			inc		r1
+			mov		#'0',(r1)
+
+			mov		#'[',visor+6
+			mov		laps_um,r0
+			add		#'0',r0
+			mov		r0,visor+7
+			mov		#']',visor+8
+
+			; segundo crono
+visor_dois:		cmp		frozen_dois,#hffff
+			beq		visor_tres
+
+			mov		segundos_dois,r0
+			mov		#visor+10,r1
+			jsr		r7,esc_tres_dig
+
+			mov		#',',visor+13
+
+			mov		decimos_dois,r0
+			mov		#visor+14,r1
+			add		#'0',r0
+			mov		r0,(r1)
+			inc		r1
+			mov		#'0',(r1)
+
+			mov		#'[',visor+16
+			mov		laps_dois,r0
+			add		#'0',r0
+			mov		r0,visor+17
+			mov		#']',visor+18
+
+			; terceiro crono
+visor_tres:		cmp		show_tres,#hffff
+			beq		visor_rel
+
+			mov		segundos_tres,r0
+			mov		#visor+20,r1
+			jsr		r7,esc_tres_dig
+
+			mov		#',',visor+23
+
+			mov		decimos_tres,r0
+			mov		#visor+24,r1
+			add		#'0',r0
+			mov		r0,(r1)
+			inc		r1
+			mov		#'0',(r1)
+
+			mov		#'[',visor+26
+			mov		laps_tres,r0
+			add		#'0',r0
+			mov		r0,visor+27
+			mov		#']',visor+28
+
+			;rel
+visor_rel:		mov		minutos_rel,r0
+			mov		#visor+31,r1
+			jsr		r7,esc_dois_dig
+			
+			mov		#':',visor+33
+
+			mov		segundos_rel,r0
+			mov		#visor+34,r1
+			jsr		r7,esc_dois_dig
+			
+			jmp		visor_loop
+
+			; num de tres
+			; dig no visor
+esc_tres_dig:		clr		r3
+			clr		r2
+
+brk_cent_tres:		cmp		r0,#100
+			blt		brk_dez_tres
+			sub		#100,r0
+			inc		r3
+			br		brk_cent_tres
+
+brk_dez_tres:		cmp		r0,#10
+			blt		esc_tres_visor
+			sub		#10,r0
+			inc		r2
+			br		brk_dez_tres
+
+esc_tres_visor:		add		#'0',r3
+			add		#'0',r2
+			add		#'0',r0
+			mov		r3,(r1)
+			inc		r1
+			mov		r2,(r1)
+			inc		r1
+			mov		r0,(r1)
+			rts		r7
+
+			; num de dois
+			; dig no visor
+esc_dois_dig:		clr		r2
+
+brk_dez_dois:		cmp		r0,#10
+			blt		esc_dois_visor
+			sub		#10,r0
+			inc		r2
+			br		brk_dez_dois
+
+esc_dois_visor:		add		#'0',r2
+			add		#'0',r0
+			mov		r2,(r1)
+			inc		r1
+			mov		r0,(r1)
+			rts		r7
+
+crono_um:
+segundos_um:		dw		0
+decimos_um:		dw		0
+laps_um:		dw		0
+wait_um:		dw		0
+show_um:		dw		0
+frozen_um:		dw		0
+frozen_c_um:		dw		50
+
+crono_dois:
+segundos_dois:		dw		0
+decimos_dois:		dw		0
+laps_dois:		dw		0
+wait_dois:		dw		0
+show_dois:		dw		0
+frozen_dois:		dw		0
+frozen_c_dois:		dw		50
+
+crono_tres:
+segundos_tres:		dw		0
+decimos_tres:		dw		0
+laps_tres:		dw		0
+wait_tres:		dw		0
+show_tres:		dw		0
+frozen_tres:		dw		0
+frozen_c_tres:		dw		50
+
+rel:
+minutos_rel:		dw		0
+segundos_rel:		dw		0
+decimos_rel:		dw		0
+
+tecla:			dw		0
+
+; interrupcao
+isr:			mov		r0,-(r6)
+			mov		r1,-(r6)
+			mov		r2,-(r6)
+			mov		r3,-(r6)
+			mov		r4,-(r6)
+			mov		r5,-(r6)
+			
+			mov		ints,r0
+			jsr		r7,int_sort
+			clr		tecst
+			and		#hfffc,ints
+
+isr_return:		mov		(r6)+,r5
+			mov		(r6)+,r4
+			mov		(r6)+,r3
+			mov		(r6)+,r2
+			mov		(r6)+,r1
+			mov		(r6)+,r0
+			rti
+
+int_sort:		and		#2,r0
+			bne		isr_tec
+			jmp		isr_timer
+
+			; branch tecla
+			; 3 arrumado
+isr_tec:		mov		tecdt,tecla
+			cmp		#'1',tecla
+			beq		adj_bools_um
+			cmp		#'2',tecla
+			beq		adj_bools_dois
+			cmp		#'3',tecla
+			bne		stop_isr_tec
+			jmp		adj_bools_tres
+stop_isr_tec:		rts		r7
+
+adj_bools_um:		cmp		wait_um,#hffff
+			beq		actv_show_um
+			cmp		show_um,#hffff
+			beq		actv_frzn_um
+			jmp		actv_wait_um
+
+actv_show_um:		not		wait_um
+			not		show_um
+			inc		laps_um
+			jmp		isr_tec_fim
+
+			; deve iniciar
+			; contador de 5s
+actv_frzn_um:		not		show_um
+			not		frozen_um
+			mov		#0,segundos_um
+			mov		#0,decimos_um
+			inc		laps_um
+			cmp		#10,laps_um
+			beq		zerar_laps_um
+			jmp		isr_tec_fim
+
+zerar_laps_um:		mov		#0,laps_um
+			jmp		isr_tec_fim
+
+actv_wait_um:		not		frozen_um
+			not		wait_um
+			clr		laps_um
+			clr		decimos_um
+			clr		segundos_um
+			mov		#50,frozen_c_um
+			jmp		isr_tec_fim
+
+adj_bools_dois:		cmp		wait_dois,#hffff
+			beq		actv_show_dois
+			cmp		show_dois,#hffff
+			beq		actv_frzn_dois
+			jmp		actv_wait_dois
+
+actv_show_dois:		not		wait_dois		
+			not		show_dois
+			inc		laps_dois
+			jmp		isr_tec_fim
+
+			; deve iniciar contador de 5s
+actv_frzn_dois:		not		show_dois
+			not		frozen_dois
+			mov		#0,segundos_dois
+			mov		#0,decimos_dois
+			inc		laps_dois
+			cmp		#10,laps_dois
+			beq		zerar_laps_dois
+			jmp		isr_tec_fim
+
+zerar_laps_dois:	mov		#0,laps_dois
+			jmp		isr_tec_fim
+
+actv_wait_dois:		not		frozen_dois
+			not		wait_dois
+			clr		laps_dois
+			clr		decimos_dois
+			clr		segundos_dois
+			mov		#50,frozen_c_dois
+			jmp		isr_tec_fim
+
+adj_bools_tres:		cmp		wait_tres,#hffff
+			beq		actv_show_tres
+			cmp		show_tres,#hffff
+			beq		actv_frzn_tres
+			jmp		actv_wait_tres
+
+actv_show_tres:		not		wait_tres		
+			not		show_tres
+			inc		laps_tres
+			br		isr_tec_fim
+
+			; deve iniciar contador de 5s
+actv_frzn_tres:		not		show_tres
+			not		frozen_tres
+			mov		#0,segundos_tres
+			mov		#0,decimos_tres
+			inc		laps_tres
+			cmp		#10,laps_tres
+			beq		zerar_laps_tres
+			jmp		isr_tec_fim
+
+zerar_laps_tres:	mov		#0,laps_tres
+			jmp		isr_tec_fim
+
+actv_wait_tres:		not		frozen_tres
+			not		wait_tres
+			clr		laps_tres
+			clr		decimos_tres
+			clr		segundos_tres
+			mov		#50,frozen_c_tres
+			jmp		isr_tec_fim
+
+isr_tec_fim:		clr		tecst
+			rts		r7
+
+			; update cronos
+isr_timer:		inc		decimos_rel
+			cmp		decimos_rel,#10
+			blt		check_um
+			clr		decimos_rel
+			
+			inc		segundos_rel
+			cmp		segundos_rel,#60
+			blt		check_um
+			clr		segundos_rel
+
+			inc		minutos_rel
+			cmp		minutos_rel,#60
+			blt		check_um
+			clr		minutos_rel
+
+check_um:		cmp		wait_um,#hffff
+			bne		updt_um
+			jmp		check_dois
+
+updt_um:		inc		decimos_um
+			cmp		decimos_um,#10
+			blt		check_dois
+			clr		decimos_um
+
+			inc		segundos_um
+			cmp		segundos_um,#999
+			blt		check_dois
+			clr		segundos_um
+			
+check_dois:		cmp		wait_dois,#hffff
+			bne		updt_dois
+			jmp		check_tres
+
+updt_dois:		inc		decimos_dois
+			cmp		decimos_dois,#10
+			blt		check_tres
+			clr		decimos_dois
+
+			inc		segundos_dois
+			cmp		segundos_dois,#999
+			blt		check_tres
+			clr		segundos_dois
+
+check_tres:		cmp		wait_tres,#hffff
+			bne		updt_tres
+			jmp		check_frzn_um
+
+updt_tres:		inc		decimos_tres
+			cmp		decimos_tres,#10
+			blt		check_frzn_um
+			clr		decimos_tres
+
+			inc		segundos_tres
+			cmp		segundos_tres,#999
+			blt		check_frzn_um
+			clr		segundos_tres
+
+			; cmp bools se cronos
+			; estao em show. se
+			; sim, atualiza var
+check_frzn_um:		cmp		frozen_um,#hffff
+			beq		dec_frzn_c_um
+			jmp		check_frzn_dois
+
+dec_frzn_c_um:		dec		frozen_c_um
+			bne		check_frzn_dois
+			not		frozen_um
+			not		show_um
+			mov		#50,frozen_c_um
+
+check_frzn_dois:	cmp		frozen_dois,#hffff
+			beq		dec_frzn_c_dois
+			jmp		check_frzn_tres
+
+dec_frzn_c_dois:	dec		frozen_c_dois
+			bne		check_frzn_tres
+			not		frozen_dois
+			not		show_dois
+			mov		#50,frozen_c_dois
+
+check_frzn_tres:	cmp		frozen_tres,#hffff
+			beq		dec_frzn_c_tres
+			jmp		isr_timer_fim
+
+dec_frzn_c_tres:	dec		frozen_c_tres
+			bne		isr_timer_fim
+			not		frozen_tres
+			not		show_tres
+			mov		#50,frozen_c_tres
+
+isr_timer_fim:		rts		r7
