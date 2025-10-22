@@ -19,7 +19,7 @@ visor:			dab		[36]
 			mov		#isr,ivet		; move posicao de rotina para vetor
 			mov		#100,timdt		; periodicidade do teclado (100ms)
 
-clr_cronos:		mov		#26,r0			; limpa cronos/rel antes de comecar
+clr_cronos:		mov		#29,r0			; limpa cronos/rel antes de comecar
 			mov		#crono_um,r1
 
 clr_mem_loop:		clr		(r1)+
@@ -41,59 +41,60 @@ set_wait:		mov		#hffff,wait_um		; inicia waits em 1
 			mov		#50,frozen_c_tres
 			; PARECE CORRETA
 ;---------------------------------------------------------------
-main:			mov		#h83,inte		; principal	
+			; PARECE CORRETA
+main:			mov		#h83,inte		; ativa interrupcoes
 
-bool_check_tec:		and		#h7f,inte		; desativa interrupcoes
+bool_check_tec:		or		#h80,inte		; ativa interrupcoes
+			and		#h7f,inte		; desativa interrupcoes
+			
 			cmp		#hffff,tecla_bool	; check se tem tecla pendente
 			beq		check_tec_um		; se tem tecla pendente, sort
 			jmp		stop_check_tec		; senao, encerra
 
-check_tec_um:		not		tecla_bool		; desliga tecla pendente
-			cmp		#'1',tecla
-			bne		check_tec_dois
-			jmp		adj_bools_um
-check_tec_dois:		cmp		#'2',tecla
-			bne		check_tec_tres
+check_tec_um:		mov		#0,tecla_bool		; desliga tecla pendente
+			cmp		#'1',tecla		; checa se tecla == 1
+			bne		check_tec_dois		; senao, vai para proxima tecla
+			jmp		adj_bools_um		
+check_tec_dois:		cmp		#'2',tecla		; checa se tecla == 2
+			bne		check_tec_tres		; senao, vai para proxima tecla
 			jmp		adj_bools_dois
-check_tec_tres:		cmp		#'3',tecla
+check_tec_tres:		cmp		#'3',tecla		; checa se tecla == 3
 			bne		stop_check_tec		; encerra se tecla diferente
 			jmp		adj_bools_tres
 
-stop_check_tec:		mov		#0,tecla_bool
-			or		#h80,inte		; liga interrupcoes		
-			jmp		visor_loop
+stop_check_tec:		clr		tecla_bool		; limpa bool de tecla pendente (ja foi usado)
+			jmp		check_c_bools		; vai para check de bools dos counters
 
-adj_bools_um:		cmp		wait_um,#hffff		; arruma bools do crono 1
-			beq		actv_show_um
-			cmp		show_um,#hffff
-			beq		actv_frzn_um
-			jmp		actv_wait_um
+adj_bools_um:		cmp		wait_um,#hffff		; se modo wait ligado
+			beq		actv_show_um		; liga modo show
+			cmp		show_um,#hffff		; se modo show ligado
+			beq		actv_frzn_um		; liga modo frozen
+			jmp		actv_wait_um		; senao, liga modo wait
 
-actv_show_um:		not		wait_um
-			not		show_um
-			jmp		stop_check_tec
+actv_show_um:		not		wait_um			; desliga modo wait
+			not		show_um			; liga modo show
+			jmp		stop_check_tec		; termina
 
-actv_frzn_um:		not		show_um
-			not		frozen_um
-			mov		#0,segundos_um
-			mov		#0,decimos_um
-			
-			cmp		#10,laps_um
-			beq		zerar_laps_um
-			jmp		stop_check_tec
+actv_frzn_um:		not		show_um			; desliga modo show
+			not		frozen_um		; liga modo frozen
+			mov		#0,segundos_um		; zera segundos
+			mov		#0,decimos_um		; zera decimos
+			cmp		#10,laps_um		; checa se laps >= 10
+			beq		zerar_laps_um		; se sim, zera laps
+			jmp		stop_check_tec		; senao, termina
 
-zerar_laps_um:		mov		#1,laps_um
-			jmp		stop_check_tec
+zerar_laps_um:		mov		#1,laps_um		; move 1 para laps
+			jmp		stop_check_tec		; termina
 
-actv_wait_um:		not		frozen_um
-			not		wait_um
-			clr		laps_um
-			clr		decimos_um
-			clr		segundos_um
-			mov		#50,frozen_c_um
-			jmp		stop_check_tec
+actv_wait_um:		not		frozen_um		; desliga frozen
+			not		wait_um			; liga wait
+			clr		laps_um			; zera laps
+			clr		decimos_um		; zera decimos
+			clr		segundos_um		; zera segundos
+			mov		#50,frozen_c_um		; reseta counter de 5s
+			jmp		stop_check_tec		; termina
 
-adj_bools_dois:		cmp		wait_dois,#hffff	; arruma bools do crono 2
+adj_bools_dois:		cmp		wait_dois,#hffff
 			beq		actv_show_dois
 			cmp		show_dois,#hffff
 			beq		actv_frzn_dois
@@ -107,7 +108,6 @@ actv_frzn_dois:		not		show_dois
 			not		frozen_dois
 			mov		#0,segundos_dois
 			mov		#0,decimos_dois
-
 			cmp		#10,laps_dois
 			beq		zerar_laps_dois
 			jmp		stop_check_tec
@@ -137,7 +137,6 @@ actv_frzn_tres:		not		show_tres
 			not		frozen_tres
 			mov		#0,segundos_tres
 			mov		#0,decimos_tres
-
 			cmp		#10,laps_tres
 			beq		zerar_laps_tres
 			jmp		stop_check_tec
@@ -154,15 +153,39 @@ actv_wait_tres:		not		frozen_tres
 			jmp		stop_check_tec
 ;---------------------------------------------------------------
 			; PARECE CORRETA
-			; checar bools
-			; para escrita
-			; ou nao
+check_c_bools:
+	
+check_um_bool:		cmp		#hffff,c_bool_um
+			beq		adj_c_um
 
-visor_loop:		; desliga inte p/
-			; escrever visor
-			and		#h7f,inte
+check_dois_bool:	cmp		#hffff,c_bool_dois
+			beq		adj_c_dois
 
-			; primeiro crono
+check_tres_bool:	cmp		#hffff,c_bool_tres
+			beq		adj_c_tres
+			jmp		visor_loop
+
+adj_c_um:		not		frozen_um
+			not		show_um
+			mov		#50,frozen_c_um
+			mov		#0,c_bool_um
+			jmp		check_dois_bool
+
+adj_c_dois:		not		frozen_dois
+			not		show_dois
+			mov		#50,frozen_c_dois
+			mov		#0,c_bool_dois
+			jmp		check_tres_bool
+
+adj_c_tres:		not		frozen_tres
+			not		show_tres
+			mov		#50,frozen_c_tres
+			mov		#0,c_bool_tres
+			jmp		visor_loop
+;---------------------------------------------------------------
+			; PARECE CORRETA
+visor_loop:		
+
 visor_um:		cmp		frozen_um,#hffff
 			beq		visor_dois
 
@@ -185,7 +208,6 @@ visor_um:		cmp		frozen_um,#hffff
 			mov		r0,visor+7
 			mov		#']',visor+8
 
-			; segundo crono
 visor_dois:		cmp		frozen_dois,#hffff
 			beq		visor_tres
 
@@ -208,7 +230,6 @@ visor_dois:		cmp		frozen_dois,#hffff
 			mov		r0,visor+17
 			mov		#']',visor+18
 
-			; terceiro crono
 visor_tres:		cmp		frozen_tres,#hffff
 			beq		visor_rel
 
@@ -231,7 +252,6 @@ visor_tres:		cmp		frozen_tres,#hffff
 			mov		r0,visor+27
 			mov		#']',visor+28
 
-			;relogio
 visor_rel:		mov		minutos_rel,r0
 			mov		#visor+31,r1
 			jsr		r7,esc_dois_dig
@@ -242,12 +262,8 @@ visor_rel:		mov		minutos_rel,r0
 			mov		#visor+34,r1
 			jsr		r7,esc_dois_dig
 			
-			; liga inte
-			or		#h80,inte
 			jmp		bool_check_tec
 
-			; num de tres
-			; dig no visor
 esc_tres_dig:		clr		r3
 			clr		r2
 
@@ -273,8 +289,6 @@ esc_tres_visor:		add		#'0',r3
 			mov		r0,(r1)
 			rts		r7
 
-			; num de dois
-			; dig no visor
 esc_dois_dig:		clr		r2
 
 brk_dez_dois:		cmp		r0,#10
@@ -290,10 +304,6 @@ esc_dois_visor:		add		#'0',r2
 			mov		r0,(r1)
 			rts		r7
 ;---------------------------------------------------------------
-			; PARECE CORRETA
-			; variaveis
-			; PODE DAR ERRO DE APAGAR
-			; INSTRUC LOGO APOS NA LIMPEZA!
 crono_um:
 segundos_um:		dw		0
 decimos_um:		dw		0
@@ -302,6 +312,7 @@ wait_um:		dw		0
 show_um:		dw		0
 frozen_um:		dw		0
 frozen_c_um:		dw		0
+c_bool_um:		dw		0
 
 crono_dois:
 segundos_dois:		dw		0
@@ -311,6 +322,7 @@ wait_dois:		dw		0
 show_dois:		dw		0
 frozen_dois:		dw		0
 frozen_c_dois:		dw		0
+c_bool_dois:		dw		0
 
 crono_tres:
 segundos_tres:		dw		0
@@ -320,6 +332,7 @@ wait_tres:		dw		0
 show_tres:		dw		0
 frozen_tres:		dw		0
 frozen_c_tres:		dw		0
+c_bool_tres:		dw		0
 
 rel:
 minutos_rel:		dw		0
@@ -329,9 +342,8 @@ decimos_rel:		dw		0
 tecla:			dw		0
 tecla_bool:		dw		0
 ;---------------------------------------------------------------
-			; PARECE CORRETA
-			; interrupcao
-isr:			mov		r0,-(r6)
+			; PARTE CORRETA
+isr:			mov		r0,-(r6)		; interrupcao
 			mov		r1,-(r6)
 			mov		r2,-(r6)
 			mov		r3,-(r6)
@@ -351,16 +363,11 @@ isr_return:		mov		(r6)+,r5
 
 			rti
 			
-			; sort teclado
-			; ou timer
-int_sort:		mov		ints,r0	
+int_sort:		mov		ints,r0			; checa se vem do teclado ou timer
 			and		#2,r0
 			bne		isr_tec
 			jmp		isr_timer
 
-			; int teclado
-			; somente passa
-			; tecla para var
 isr_tec:		mov		tecdt,tecla
 			mov		#hffff,tecla_bool
 
@@ -371,21 +378,27 @@ isr_tec:		mov		tecdt,tecla
 			cmp		#'3',tecla
 			beq		check_laps_tres
 
-check_laps_um:		cmp		show_um,#hffff
+check_laps_um:		cmp		wait_um,#hffff
+			beq		inc_laps_um
+			cmp		show_um,#hffff
 			beq		inc_laps_um
 			jmp		isr_tec_fim
 
 inc_laps_um:		inc		laps_um
 			jmp		isr_tec_fim
 
-check_laps_dois:	cmp		show_dois,#hffff
+check_laps_dois:	cmp		wait_dois,#hffff
+			beq		inc_laps_dois
+			cmp		show_dois,#hffff
 			beq		inc_laps_dois
 			jmp		isr_tec_fim
 
 inc_laps_dois:		inc		laps_dois
 			jmp		isr_tec_fim
 
-check_laps_tres:	cmp		show_tres,#hffff
+check_laps_tres:	cmp		wait_tres,#hffff
+			beq		inc_laps_tres
+			cmp		show_tres,#hffff
 			beq		inc_laps_tres
 			jmp		isr_tec_fim
 
@@ -395,11 +408,7 @@ inc_laps_tres:		inc		laps_tres
 isr_tec_fim:		clr		tecst
 			rts		r7
 
-			; int timer
-			; somente atualiza
-			; relogio programa
-isr_timer:		; update rel
-			inc		decimos_rel
+isr_timer:		inc		decimos_rel		; update relogio
 			cmp		decimos_rel,#10
 			blt		check_um
 			clr		decimos_rel
@@ -414,8 +423,6 @@ isr_timer:		; update rel
 			blt		check_um
 			clr		minutos_rel
 
-			; update crono
-			; se wait off
 check_um:		cmp		wait_um,#hffff
 			bne		updt_um
 			jmp		check_dois
@@ -430,8 +437,6 @@ updt_um:		inc		decimos_um
 			blt		check_dois
 			clr		segundos_um
 			
-			; update crono
-			; se wait off
 check_dois:		cmp		wait_dois,#hffff
 			bne		updt_dois
 			jmp		check_tres
@@ -450,8 +455,6 @@ check_tres:		cmp		wait_tres,#hffff
 			bne		updt_tres
 			jmp		check_frzn_um
 
-			; update crono
-			; se wait off
 updt_tres:		inc		decimos_tres
 			cmp		decimos_tres,#10
 			blt		check_frzn_um
@@ -461,36 +464,39 @@ updt_tres:		inc		decimos_tres
 			cmp		segundos_tres,#999
 			blt		check_frzn_um
 			clr		segundos_tres
-		
-			; OPERACOES NOT - NOT - MOV
-			; SOBRE FRZN, FAZER NO MAIN
 
-			; checa frzn bool
 check_frzn_um:		cmp		frozen_um,#hffff
 			beq		dec_frzn_c_um
 			jmp		check_frzn_dois
 
-			; se frzn bool on
-			; dec contador 100ms
 dec_frzn_c_um:		dec		frozen_c_um
+			beq		adj_um_bool
+			jmp		check_frzn_dois
+
+adj_um_bool:		mov		#hffff,c_bool_um
+			jmp		check_frzn_dois
 			
-			; checa frzn bool
 check_frzn_dois:	cmp		frozen_dois,#hffff
 			beq		dec_frzn_c_dois
 			jmp		check_frzn_tres
 
-			; se frzn bool on
-			; dec contador 100ms
 dec_frzn_c_dois:	dec		frozen_c_dois
+			beq		adj_dois_bool
+			jmp		check_frzn_tres
+
+adj_dois_bool:		mov		#hffff,c_bool_dois
+			jmp		check_frzn_tres
 			
-			; checa frzn bool
 check_frzn_tres:	cmp		frozen_tres,#hffff
 			beq		dec_frzn_c_tres
 			jmp		isr_timer_fim
 
-			; se frzn bool on
-			; dec contador 100ms
 dec_frzn_c_tres:	dec		frozen_c_tres
+			beq		adj_tres_bool
+			jmp		isr_timer_fim
+
+adj_tres_bool:		mov		#hffff,c_bool_tres
+			jmp		isr_timer_fim
 
 			; fim int timer
 isr_timer_fim:		rts		r7
